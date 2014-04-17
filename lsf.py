@@ -11,7 +11,6 @@ from time import sleep
 lg = getLogger('lsf')
 
 # TODO: multiple inputs
-# TODO: add common variables
 # TODO: allow stacking
 # TODO: implement keyboard interrupt
 # TODO: change lsf_dir
@@ -188,11 +187,11 @@ class Popen():
 
 def _prepare_function(func, input, output, preamble):
     code = ('#!/usr/bin/env python3\n\n' +
-            preamble + '\n' +
             'from pickle import load, dump\n' + 
-            getsource(func) + '\n\n' +
+            preamble + '\n' +
+            getsource(func) + '\n' +
             'with open(\'' + input + '\', \'rb\') as f:\n'
-            '    values = load(f)\n'
+            '    values = load(f)\n\n'
             'output = ' + func.__name__ + '(values)\n\n' +
             'with open(\'' + output + '\', \'wb\') as f:\n'
             '    dump(output, f)'
@@ -200,7 +199,7 @@ def _prepare_function(func, input, output, preamble):
     return code
     
 
-def map_lsf(funct, iterable, imports=None, queue=None):
+def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     """Run function on iterables, on LSF.
     
     Parameters
@@ -249,6 +248,14 @@ def map_lsf(funct, iterable, imports=None, queue=None):
                 subfunc = ', '.join(subfunc)
             preamble.append('from ' + module + ' import ' + subfunc)
 
+    if variables is not None:
+        variable_file = join(input_dir, 'common_variables.pkl')
+        preamble.append('\nwith open(\'' + variable_file + '\', \'rb\') as f:')
+
+        with open(variable_file, 'wb') as f:
+            for var_name, var_value in variables.items():
+                dump(var_value, f)
+                preamble.append('    ' + var_name + ' = load(f)\n')
     
     # submit jobs    
     all_ps = []  # processes
