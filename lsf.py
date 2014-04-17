@@ -113,7 +113,7 @@ class Popen():
     def __init__(self, args, log, queue='vshort', **kwargs):
         self.pid = None
         
-        # remove bad characters from jobname
+        # hope that log is unique, maybe we need a better way to define the name
         self.jobname = basename(args)
         
         self._stdout = log + '.o'
@@ -134,8 +134,8 @@ class Popen():
         cmd.append('-J ' + self.jobname)
         cmd.append('-o ' + self._stdout)
         cmd.append('-e ' + self._stderr)
-        self._cmd = ' '.join(cmd) + ' ' + args
-        
+        self._cmd = 'echo \"' + args + '\" | ' +  ' '.join(cmd) 
+
         # use standard input
         kwargs.update({'stdout': PIPE, 'stderr': PIPE})
         self._kwargs = kwargs
@@ -243,7 +243,6 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     
     # create preamble common to all the functions
     preamble = []
-    preamble.append('source ' + virtual_env)
     if imports is not None:
         for module, subfunc in imports.items():
             if not isinstance(subfunc, str):
@@ -285,7 +284,11 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
 
         st = stat(script_file)
         chmod(script_file, st.st_mode | S_IEXEC)
-        all_ps.append(Popen(script_file, log=log_file, queue=queue))
+        
+        # source does not seem necessary
+        # cmd = 'source ' + virtual_env + '; '  + script_file
+        cmd = script_file
+        all_ps.append(Popen(cmd, log=log_file, queue=queue))
         lg.debug('Submitting script: ' + script_file)
 
     # wait for jobs to finish
