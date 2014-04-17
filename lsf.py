@@ -1,3 +1,4 @@
+from collections import Iterable
 from inspect import getsource
 from logging import getLogger
 from os import remove, chmod, stat, mkdir, getlogin, getpid
@@ -22,15 +23,13 @@ virtual_env = '/PHShome/gp902/toolbox/python/bin/activate'
 batch_index = -1
 
 
-def _generate_jobid(funct, n_jobs):
+def _generate_jobid(funct):
     """Generate a (almost) unique job id.
     
     Parameters
     ----------
     funct : function
         function to execute (we only need the name)
-    n_jobs : int
-        number of jobs to generate
         
     Returns
     -------
@@ -47,11 +46,16 @@ def _generate_jobid(funct, n_jobs):
     It's important to generate unique IDs, in the long term it might be 
     necessary to include the hostname.
     
+    This is an infinite generator, not sure if the syntax is very clear, but it 
+    works. It'll keep spitting out unique ID.
+    
     """
     global batch_index
     batch_index += 1
     
-    for job_index in range(n_jobs):
+    job_index = -1
+    while True:
+        job_index += 1
         yield '{0}_p{1}_b{2:06}_{3}_j{4:06}'.format(getlogin(), getpid(), 
                                                     batch_index, funct.__name__,
                                                     job_index)
@@ -194,7 +198,7 @@ def _prepare_function(func, preamble, input, output, script_file):
             getsource(func) + '\n' +
             'with open(\'' + input + '\', \'rb\') as f:\n'
             '    values = load(f)\n\n'
-            'output = ' + func.__name__ + '(values)\n\n' +
+            'output = ' + func.__name__ + '(*values)\n\n' +
             'with open(\'' + output + '\', \'wb\') as f:\n'
             '    dump(output, f)\n' +
             'remove(\'' + input + '\')\n' + 
@@ -225,6 +229,10 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
 
     Notes
     -----
+    You always need to pass one iterable at least. It doesn't make sense not to
+    use it. The only case I can imagine is when running a randomization, but
+    we could use the number as seed anyway.
+    
     """
     # create paths
     input_dir = join(lsf_dir, 'input')
@@ -242,7 +250,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         mkdir(log_dir)
     
     # generate a unique jobid
-    jobid_generator = _generate_jobid(funct, len(iterable))
+    jobid_generator = _generate_jobid(funct)
     
     # create preamble common to all the functions
     preamble = []
@@ -277,6 +285,9 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         script_file = join(lsf_dir, 'funct', 'funct_' + jobid)
         log_file = join(lsf_dir, 'log', 'log_' + jobid)
 
+        if isinstance(val, str) or not isinstance(val, Iterable):
+            val = (val, )
+
         with open(input_file, 'wb') as f:
             dump(val, f)
         out_all.append(output_file)
@@ -294,6 +305,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         all_ps.append(Popen(cmd, log=log_file, queue=queue))
         lg.debug('Submitting script: ' + script_file)
 
+    
     # wait for jobs to finish
     while all_ps:
         sleep(0.2)
