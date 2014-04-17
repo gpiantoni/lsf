@@ -18,6 +18,7 @@ lg = getLogger('lsf')
 lsf_dir = '/PHShome/gp902/projects/lsf/log'
 lg.info('Using directory ' + lsf_dir)
 
+virtual_env = '/PHShome/gp902/toolbox/python/bin/activate'
 batch_index = -1
 
 
@@ -157,8 +158,8 @@ class Popen():
             with open(self._stderr, 'r') as f:
                 stderr = f.read()
     
-            # remove(self._stdout)
-            # remove(self._stderr)
+            remove(self._stdout)
+            remove(self._stderr)
         except FileNotFoundError:
             stdout = stderr = None
             
@@ -242,12 +243,16 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     
     # create preamble common to all the functions
     preamble = []
+    preamble.append('source ' + virtual_env)
     if imports is not None:
         for module, subfunc in imports.items():
             if not isinstance(subfunc, str):
                 subfunc = ', '.join(subfunc)
             preamble.append('from ' + module + ' import ' + subfunc)
 
+    # store the variables that are common to all the functions
+    # note that it's a dict, there is no guarantee about the order in which they
+    # are stored
     if variables is not None:
         variable_file = join(input_dir, 'common_variables.pkl')
         preamble.append('\nwith open(\'' + variable_file + '\', \'rb\') as f:')
@@ -255,7 +260,9 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         with open(variable_file, 'wb') as f:
             for var_name, var_value in variables.items():
                 dump(var_value, f)
-                preamble.append('    ' + var_name + ' = load(f)\n')
+                preamble.append('    ' + var_name + ' = load(f)')
+                
+        preamble.append('') # extra space
     
     # submit jobs    
     all_ps = []  # processes
@@ -307,5 +314,6 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
                 output.append(load(f))
         except FileNotFoundError:
             output.append(None)
-        
+
+    # clean up
     return output
