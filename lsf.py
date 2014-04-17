@@ -7,7 +7,7 @@ from pickle import load, dump
 from stat import S_IEXEC
 from subprocess import Popen as Popen_local
 from subprocess import PIPE
-from time import sleep
+from time import sleep, time
 
 lg = getLogger('lsf')
 
@@ -74,6 +74,13 @@ def _parse_resource_usage(stdout):
     
     return stdout[stdout.find(str_beg) + len(str_beg):stdout.find(str_end)]
     
+
+def _parse_seconds(stdout):
+    str_beg = 'CPU time   :'
+    str_end = 'sec.\n'
+    
+    return stdout[stdout.find(str_beg) + len(str_beg):stdout.find(str_end)]
+
 
 class Popen():
     """Create a subprocess in the LSF cluster.
@@ -156,9 +163,10 @@ class Popen():
         
     def communicate(self):
         self.wait()
+        sleep(0.1)  # sometimes the file is there but it's empty
         try:
             with open(self._stdout, 'r') as f:
-                stdout = f.read()  # TODO: clean it up
+                stdout = f.read()
             with open(self._stderr, 'r') as f:
                 stderr = f.read()
     
@@ -234,6 +242,8 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     we could use the number as seed anyway.
     
     """
+    t0 = time()
+    
     # create paths
     input_dir = join(lsf_dir, 'input')
     output_dir = join(lsf_dir, 'output')
@@ -307,12 +317,14 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
 
     
     # wait for jobs to finish
+    cpu_time = 0.
     while all_ps:
         sleep(0.2)
         for ps in all_ps:
             if ps.poll() in ('DONE', 'EXIT'):
                 stdout, stderr = ps.communicate()
                 usage = _parse_resource_usage(stdout)
+                cpu_time += float(_parse_seconds(usage).strip())
                 if stderr:
                     lg.error(ps.jobname + ' has finished with error:\n' + 
                              stderr)
@@ -338,4 +350,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     if variables is not None:
         remove(variable_file)
         
+    wall_time = time() - t0
+    lg.info('Wall Time: {0:0.2f}s, CPU time: {1:0.2f}s, speed-up: {2:0.2f}X'
+            ''.format(wall_time, cpu_time, cpu_time / wall_time))
     return output
