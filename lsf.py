@@ -14,13 +14,13 @@ lg = getLogger('lsf')
 # TODO: add common variables
 # TODO: allow stacking
 # TODO: implement keyboard interrupt
-# TODO: convert print to log
 # TODO: change lsf_dir
 
 lsf_dir = '/PHShome/gp902/projects/lsf/log'
 lg.info('Using directory ' + lsf_dir)
 
 batch_index = -1
+
 
 def _generate_jobid(funct, n_jobs):
     """Generate a (almost) unique job id.
@@ -62,6 +62,14 @@ def _parse_stdout(stdout):
     str_end = '\n\nPS:\n'
     
     return stdout[stdout.find(str_beg) + len(str_beg):stdout.find(str_end)]
+
+
+def _parse_resource_usage(stdout):
+    str_beg = 'Resource usage summary:\n\n'
+    str_end = '\nThe output (if any) follows:\n'
+    
+    return stdout[stdout.find(str_beg) + len(str_beg):stdout.find(str_end)]
+    
 
 class Popen():
     """Create a subprocess in the LSF cluster.
@@ -192,7 +200,7 @@ def _prepare_function(func, input, output, preamble):
     return code
     
 
-def map_lsf(funct, iterable, imports=None):
+def map_lsf(funct, iterable, imports=None, queue=None):
     """Run function on iterables, on LSF.
     
     Parameters
@@ -263,7 +271,7 @@ def map_lsf(funct, iterable, imports=None):
 
         st = stat(script_file)
         chmod(script_file, st.st_mode | S_IEXEC)
-        all_ps.append(Popen(script_file, log=log_file))
+        all_ps.append(Popen(script_file, log=log_file, queue=queue))
         lg.debug('Submitting script: ' + script_file)
 
     # wait for jobs to finish
@@ -272,12 +280,15 @@ def map_lsf(funct, iterable, imports=None):
         for ps in all_ps:
             if ps.poll() in ('DONE', 'EXIT'):
                 stdout, stderr = ps.communicate()
+                usage = _parse_resource_usage(stdout)
                 if stderr:
                     lg.error(ps.jobname + ' has finished with error:\n' + 
                              stderr)
+                    lg.debug('Resource usage\n' + usage)
                 else:
                     lg.info(ps.jobname + ' has finished')
-                    lg.debug(_parse_stdout(stdout))
+                    lg.debug('Output\n' + _parse_stdout(stdout))
+                    lg.debug('Resource usage\n' + usage)
                     
                 all_ps.remove(ps)
             
