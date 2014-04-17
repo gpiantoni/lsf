@@ -186,8 +186,9 @@ class Popen():
         return self.communicate()
 
 
-def _prepare_function(func, input, output, preamble):
+def _prepare_function(func, preamble, input, output, script_file):
     code = ('#!/usr/bin/env python3\n\n' +
+            'from os import remove\n' + 
             'from pickle import load, dump\n' + 
             preamble + '\n' +
             getsource(func) + '\n' +
@@ -195,7 +196,9 @@ def _prepare_function(func, input, output, preamble):
             '    values = load(f)\n\n'
             'output = ' + func.__name__ + '(values)\n\n' +
             'with open(\'' + output + '\', \'wb\') as f:\n'
-            '    dump(output, f)'
+            '    dump(output, f)\n' +
+            'remove(\'' + input + '\')\n' + 
+            'remove(\'' + script_file + '\')\n'
             )
     return code
     
@@ -279,8 +282,8 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         out_all.append(output_file)
         
         with open(script_file, 'w') as f:
-            f.write(_prepare_function(funct, input_file, output_file, 
-                                      '\n'.join(preamble)))
+            f.write(_prepare_function(funct, '\n'.join(preamble),
+                                      input_file, output_file, script_file))
 
         st = stat(script_file)
         chmod(script_file, st.st_mode | S_IEXEC)
@@ -317,6 +320,10 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
                 output.append(load(f))
         except FileNotFoundError:
             output.append(None)
+        else:
+            remove(output_file)
 
-    # clean up
+    if variables is not None:
+        remove(variable_file)
+        
     return output
