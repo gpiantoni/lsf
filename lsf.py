@@ -20,7 +20,7 @@ lsf_dir = '/PHShome/gp902/projects/lsf'
 lg.info('Using directory ' + lsf_dir)
 
 virtual_env = '/PHShome/gp902/toolbox/python/bin/activate'
-batch_index = -1
+batch_generator = count()
 
 
 def _generate_jobid(funct):
@@ -50,8 +50,8 @@ def _generate_jobid(funct):
     works. It'll keep spitting out unique ID.
 
     """
-    global batch_index
-    batch_index += 1
+    global batch_generator
+    batch_index = next(batch_generator)
 
     job_index = count()
     while True:
