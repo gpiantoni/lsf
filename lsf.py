@@ -56,7 +56,8 @@ def _generate_jobid(funct):
     job_index = count()
     while True:
         yield '{0}_p{1}_b{2:06}_{3}_j{4:06}'.format(getlogin(), getpid(),
-                                                    batch_index, funct.__name__,
+                                                    batch_index,
+                                                    funct.__name__,
                                                     next(job_index))
 
 
@@ -123,7 +124,7 @@ class Popen():
     def __init__(self, args, log, queue='vshort', **kwargs):
         self.pid = None
 
-        # hope that log is unique, maybe we need a better way to define the name
+        # hope that log is unique, we need a better way to define the name
         self.jobname = basename(args)
 
         self._stdout = log + '.o'
@@ -144,7 +145,7 @@ class Popen():
         cmd.append('-J ' + self.jobname)
         cmd.append('-o ' + self._stdout)
         cmd.append('-e ' + self._stderr)
-        self._cmd = 'echo \"' + args + '\" | ' +  ' '.join(cmd)
+        self._cmd = 'echo \"' + args + '\" | ' + ' '.join(cmd)
 
         # use standard input
         kwargs.update({'stdout': PIPE, 'stderr': PIPE})
@@ -270,8 +271,8 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
             preamble.append('from ' + module + ' import ' + subfunc)
 
     # store the variables that are common to all the functions
-    # note that it's a dict, there is no guarantee about the order in which they
-    # are stored
+    # note that it's a dict, there is no guarantee about the order in which
+    # they are stored
     if variables is not None:
         variable_file = join(input_dir, 'common_variables.pkl')
         preamble.append('\nwith open(\'' + variable_file + '\', \'rb\') as f:')
@@ -281,7 +282,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
                 dump(var_value, f)
                 preamble.append('    ' + var_name + ' = load(f)')
 
-        preamble.append('') # extra space
+        preamble.append('')  # extra space
 
     # submit jobs
     all_ps = []  # processes
@@ -313,7 +314,6 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         cmd = script_file
         all_ps.append(Popen(cmd, log=log_file, queue=queue))
         lg.debug('Submitting script: ' + script_file)
-
 
     # wait for jobs to finish
     cpu_time = 0.
