@@ -11,12 +11,11 @@ from time import sleep, time
 
 lg = getLogger('lsf')
 
-# TODO: multiple inputs
 # TODO: allow stacking
 # TODO: implement keyboard interrupt
 # TODO: change lsf_dir
 
-lsf_dir = '/PHShome/gp902/projects/lsf/log'
+lsf_dir = '/PHShome/gp902/projects/lsf'
 lg.info('Using directory ' + lsf_dir)
 
 virtual_env = '/PHShome/gp902/toolbox/python/bin/activate'
