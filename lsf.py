@@ -163,7 +163,7 @@ class Popen():
 
     def communicate(self):
         self.wait()
-        sleep(0.1)  # sometimes the file is there but it's empty
+
         try:
             with open(self._stdout, 'r') as f:
                 stdout = f.read()
@@ -322,15 +322,21 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         for ps in all_ps:
             if ps.poll() in ('DONE', 'EXIT'):
                 stdout, stderr = ps.communicate()
-                usage = _parse_resource_usage(stdout)
-                cpu_time += float(_parse_seconds(usage).strip())
+                if stdout:
+                    usage = _parse_resource_usage(stdout)
+                    stdout = _parse_stdout(stdout)
+                    cpu_time += float(_parse_seconds(usage).strip())
+                else:
+                    usage = 'could not read usage (CPU time not available)'
+                    cpu_time += 0
+
                 if stderr:
                     lg.error(ps.jobname + ' has finished with error:\n' +
                              stderr)
                     lg.debug('Resource usage\n' + usage)
                 else:
                     lg.info(ps.jobname + ' has finished')
-                    lg.debug('Output\n' + _parse_stdout(stdout))
+                    lg.debug('Output\n' + stdout)
                     lg.debug('Resource usage\n' + usage)
 
                 all_ps.remove(ps)
@@ -350,6 +356,6 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
         remove(variable_file)
 
     wall_time = time() - t0
-    lg.info('Wall Time: {0:0.2f}s, CPU time: {1:0.2f}s, speed-up: {2:0.2f}X'
-            ''.format(wall_time, cpu_time, cpu_time / wall_time))
+    lg.warning('Wall Time: {0:0.2f}s, CPU time: {1:0.2f}s, speed-up: {2:0.2f}X'
+               ''.format(wall_time, cpu_time, cpu_time / wall_time))
     return output
