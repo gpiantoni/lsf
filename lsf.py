@@ -274,7 +274,9 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     # note that it's a dict, there is no guarantee about the order in which
     # they are stored
     if variables is not None:
-        variable_file = join(input_dir, 'common_variables.pkl')
+        variable_file = join(input_dir,
+                             '{0}_p{1}_common_variables.pkl'.format(getlogin(),
+                                                                    getpid()))
         preamble.append('\nwith open(\'' + variable_file + '\', \'rb\') as f:')
 
         with open(variable_file, 'wb') as f:
@@ -329,6 +331,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
                 else:
                     usage = 'could not read usage (CPU time not available)'
                     cpu_time += 0
+                    stdout = ''
 
                 if stderr:
                     lg.error(ps.jobname + ' has finished with error:\n' +
