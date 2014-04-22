@@ -2,13 +2,14 @@ from collections import Iterable
 from inspect import getsource
 from itertools import count
 from logging import getLogger
-from os import remove, chmod, stat, mkdir, getlogin, getpid
+from os import remove, chmod, stat, mkdir, getuid, getpid
 from os.path import join, exists,  basename
 from pickle import load, dump
 from stat import S_IEXEC
 from subprocess import Popen as Popen_local
 from subprocess import PIPE
 from time import sleep, time
+
 
 lg = getLogger('lsf')
 
@@ -55,7 +56,7 @@ def _generate_jobid(funct):
 
     job_index = count()
     while True:
-        yield '{0}_p{1}_b{2:06}_{3}_j{4:06}'.format(getlogin(), getpid(),
+        yield '{0}_p{1}_b{2:06}_{3}_j{4:06}'.format(getuid(), getpid(),
                                                     batch_index,
                                                     funct.__name__,
                                                     next(job_index))
@@ -215,7 +216,7 @@ def _prepare_function(func, preamble, input, output, script_file):
     return code
 
 
-def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
+def map_lsf(funct, iterable, imports=None, variables=None, queue='vshort'):
     """Run function on iterables, on LSF.
 
     Parameters
@@ -275,7 +276,7 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue=None):
     # they are stored
     if variables is not None:
         variable_file = join(input_dir,
-                             '{0}_p{1}_common_variables.pkl'.format(getlogin(),
+                             '{0}_p{1}_common_variables.pkl'.format(getuid(),
                                                                     getpid()))
         preamble.append('\nwith open(\'' + variable_file + '\', \'rb\') as f:')
 
