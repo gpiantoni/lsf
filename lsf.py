@@ -200,6 +200,7 @@ class Popen():
 
 
 def _prepare_function(func, preamble, input, output, script_file):
+    """func.__name__  doesn't work with partial functions."""
     code = ('#!/usr/bin/env python3\n\n' +
             'from os import remove\n' +
             'from pickle import load, dump\n' +
@@ -298,11 +299,11 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue='vshort'):
         script_file = join(lsf_dir, 'funct', 'funct_' + jobid)
         log_file = join(lsf_dir, 'log', 'log_' + jobid)
 
-        if isinstance(val, str) or not isinstance(val, Iterable):
+        if not isinstance(val, tuple):
             val = (val, )
-
         with open(input_file, 'wb') as f:
             dump(val, f)
+
         out_all.append(output_file)
 
         with open(script_file, 'w') as f:
