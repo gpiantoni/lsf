@@ -217,7 +217,7 @@ def _prepare_function(func, preamble, input, output, script_file):
     return code
 
 
-def map_lsf(funct, iterable, imports=None, variables=None, queue='vshort'):
+def map_lsf(funct, iterable, imports=None, variables=None, queue='short'):
     """Run function on iterables, on LSF.
 
     Parameters
@@ -230,12 +230,18 @@ def map_lsf(funct, iterable, imports=None, variables=None, queue='vshort'):
         functions to import in the preamble, where key is the module and values
         are the function(s) to import (as string or tuple), such as:
         {'os': ('remove', 'chmod'), 'os.path': 'join'}
+    variables : dict
+        dictionary with variables common to all the functions, where key is the
+        name of the variable to import and the value is the actual variable. Of
+        course, the variable should be pickable. It stores all the variables
+        once for all the parallel processes.
+    queue : str
+        name of the queue to submit the job to.
 
     Returns
     -------
     list
         list with the results for each iteratation
-
 
     Notes
     -----
